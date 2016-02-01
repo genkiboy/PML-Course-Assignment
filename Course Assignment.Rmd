@@ -1,0 +1,147 @@
+---
+title: "PML Course Assignment"
+author: "Kevin E Stanford"
+date: "January 29, 2016"
+output: html_document
+---
+
+### Project Overview
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience, all wearing on-body sensors.
+
+[Read more at http://groupware.les.inf.puc-rio.br/har]
+
+Our goal was to predict the manner in which they performed the exercise (Classes A-E above) by analyzing the data from the body sensors. After fitting and testing three different model types (random forest, linear discriminant analysis, and boosting), we found the random forest model to be the most accurate, with an estimated out-of-sample error of 0.6%. When applied to the official "Testing" set, the model classified all 20 of data observations correctly.
+
+
+### Data Preparation
+Training and Testing data sets were downloaded from the provided links and loaded into R. Blank values, as well as all values of 'NA', were identified as missing in the resulting R data frames.
+
+```{r setup, cache=TRUE}
+trainCA <- read.csv('pml-training.csv'
+                    ,stringsAsFactors = FALSE
+                    ,na.strings = c('NA',''))
+
+testCA <- read.csv('pml-testing.csv'
+                    ,stringsAsFactors = FALSE
+                    ,na.strings = c('NA',''))
+
+```
+
+Upon visual inspection of the training set, we saw that many of the columns contained large numbers of NA values. We found the frequency of NA values in each column and checked for near zero-variance predictors all of which were candidates to be dropped from the model.
+
+```{r findNAs}
+# count numbers of NA values in each column
+na_count <-sapply(trainCA, function(y)
+        sum(length(which(is.na(y)))))
+
+# find predictors with near zero-variance 
+library(caret)
+nzv <- nearZeroVar(trainCA
+                   ,saveMetrics = TRUE)
+
+table(nzv$nzv,na_count)
+names(trainCA)[na_count==0 & nzv$nzv]
+
+```
+
+From a data set of 19,622 observations, each column  was either complete or had 19,216 (97.9%) missing values. We therefore removed the 100 columns with 19,216 missing values (42 of which also had near zero-variances) before continuing with the model. We will eliminated the column new_window, which was completely populated but had a near zero-variance, and other columns not containing any instrumental data, since they would be possible sources of bias and/or provide the possibility of overfitting the models: X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, and num_window:
+
+```{r removeNAs}
+# remove columns with mostly NA values and/or near zero-variances
+trainCA2 <- trainCA[,(na_count < 19000 & !nzv$nzv)]
+# remove ID columns X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, and num_window
+trainCA2 <- trainCA2[,-c(1:6)]
+```
+
+
+As a final preparatory step, we split the cleaned trainCA2 data set into training and testing portions tCA2Train and tCA2Test for model assessment purposes as follows:
+        
+```{r finalPrep, cache=TRUE}
+inTrain <- createDataPartition(y=trainCA2$classe
+                               ,p=0.7
+                               ,list = FALSE)
+tCA2Train <- trainCA2[inTrain,]
+tCA2Test <- trainCA2[-inTrain,]
+```
+
+
+### Model Training
+Next we trained three different types of models: random forest, linear discrimant analysis, and boosting (via gbm). Given the large number of predictors (52), we used 5-fold cross-validation, with no repeats, on each model to reduce the amount of overfitting. All models looked at the variable _classe_ as a function of the 52 predictors remaining in training data set tCA2Train:
+
+```{r modelTime, cache=TRUE, echo=FALSE}
+set.seed(8675309)
+
+myControl <- trainControl(method='cv'
+                          ,number=5)
+
+modRF <- train(classe~.
+               ,data=tCA2Train
+               ,method='rf'
+               ,trControl=myControl)
+modLDA <- train(classe~.
+                ,data=tCA2Train
+                ,method='lda'
+                ,trControl=myControl)
+modGBM <- train(classe~.
+                ,data=tCA2Train
+                ,method='gbm'
+                ,trControl=myControl
+                ,verbose=FALSE)
+
+```
+
+
+### Model Prediction Assessment
+Each of the three models was assess for prediction accuracy. On the original training data, the random forest model had the highest accuracy (100%), followed by boosting(gbm) at 97.4%, and trailed by LDA at 70.7%:
+
+```{r predTime1, cache=TRUE}
+
+predRF1 <- predict(modRF
+                   ,tCA2Train)
+confusionMatrix(predRF1
+                ,tCA2Train$classe)$overall[1]
+
+predLDA1 <- predict(modLDA
+                    ,tCA2Train)
+confusionMatrix(predLDA1
+                ,tCA2Train$classe)$overall[1]
+
+predGBM1 <- predict(modGBM
+                    ,tCA2Train)
+confusionMatrix(predGBM1
+                ,tCA2Train$classe)$overall[1]
+
+
+```
+
+Looking at the testing data (tCA2Test) partitioned from the original training data, we got similar results, ranging from random forest at 99.4% down to LDA at 70.1%:
+
+```{r predTime2, cache=TRUE}
+
+predRF2 <- predict(modRF
+                   ,tCA2Test)
+confusionMatrix(predRF2
+                ,tCA2Test$classe)$overall[1]
+
+predLDA2 <- predict(modLDA
+                    ,tCA2Test)
+confusionMatrix(predLDA2
+                ,tCA2Test$classe)$overall[1]
+
+predGBM2 <- predict(modGBM
+                    ,tCA2Test)
+confusionMatrix(predGBM2
+                ,tCA2Test$classe)$overall[1]
+
+```
+
+Based on model prediction performance, our expected out of sample error for our random forest model is 0.6%. We applied the random forest model to the 20 cases in the original testing data set (testCA) and submitted it for grading, receiving a perfect 20/20:
+
+```{r predTime3, cache=TRUE}
+
+predRF3 <- predict(modRF
+                   ,testCA)
+predRF3
+
+```
+
