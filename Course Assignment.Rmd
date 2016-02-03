@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ### Project Overview
-Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience, all wearing on-body sensors.
+Six young healthy participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E). The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience, all wearing on-body sensors.
 
 [Read more at http://groupware.les.inf.puc-rio.br/har]
 
